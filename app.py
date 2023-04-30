@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 import os
 import openai
 import json
@@ -16,7 +16,13 @@ BASE_PROMPT = """Create a response document with content that matches the follow
 
 The first line is the Content-Type of the response.
 The following lines is the returned data.
-In case of a html response, add relative href links with to related topics.
+In case of a html response:
+- add relative href links to related topics.
+- add relative href "Back" buttons to the previous page, like: href="../"
+- add inline css style to the html document; Use mild formatting like Helvetica font, margins, etc. Try to keep the style simple, visually centered and easy to read.
+- set <title> to a summary of the content.
+- add a more content link to the bottom of the page, like: href="{{URL_PATH}}/more"
+If {{URL_PATH}} is /, then the response document is a website called "The Everything Website", which contains various links to any kind of topics.
 {{OPTIONAL_DATA}}
 
 Content-Type:
@@ -36,8 +42,15 @@ def completion_with_backoff(**kwargs):
     return openai.Completion.create(**kwargs)
 
 
-@app.route("/", methods=["POST", "GET"])
-@app.route("/<path:path>", methods=["POST", "GET"])
+@app.route("/", methods=["GET"])
+@app.route("/<path:path>", methods=["GET"])
+def serve_index(path=""):
+    return send_from_directory(".", "index.html")
+
+
+# @app.route("/api", methods=["GET"])
+@app.route("/api/", methods=["GET"])  # Add this line
+@app.route("/api/<path:path>", methods=["GET"])
 def catch_all(path=""):
 
     if request.form:
