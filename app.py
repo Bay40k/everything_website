@@ -22,6 +22,7 @@ In case of a html response:
 - add inline css style to the html document; Use mild formatting like Helvetica font, margins, etc. Try to keep the style simple, visually centered and easy to read.
 - set <title> to a summary of the content.
 - add a more content link to the bottom of the page, like: href="{{URL_PATH}}/more"
+- Remove duplicate paths/slashes in href links; Example: href="/about/tech" is good, href="//about/about///tech/" is bad.
 If {{URL_PATH}} is /, then the response document is a website called "The Everything Website", which contains various links to any kind of topics.
 {{OPTIONAL_DATA}}
 
