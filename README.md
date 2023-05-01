@@ -1,6 +1,6 @@
 # The Everything Website
 
-This is a web application that generates a dynamic response based on the provided URL path. It uses the OpenAI GPT-4 model to create the content.
+This is a web application that generates a dynamic response based on the provided URL path. It uses the OpenAI GPT-3.5 model to create the content.
 
 ## Getting Started
 
