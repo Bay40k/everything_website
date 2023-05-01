@@ -11,6 +11,7 @@ This is a web application that generates a dynamic response based on the provide
 - openai
 - waitress
 - tenacity
+- jinja2
 - virtualenv (optional)
 
 ### Installation

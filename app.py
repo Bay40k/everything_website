@@ -1,8 +1,7 @@
 from flask import Flask, request, send_from_directory
-import os
 import openai
 import json
-
+from jinja2 import Template
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 
 # replace with your own openai key
@@ -11,22 +10,39 @@ with open("./openai.key") as f:
 
 app = Flask(__name__)
 
-BASE_PROMPT = """Create a response document with content that matches the following URL path: 
-    `{{URL_PATH}}`
-
-The first line is the Content-Type of the response.
-The following lines is the returned data.
-In case of a html response:
-- add relative href links to related topics.
-- add relative href "Back" buttons to the previous page, like: href="../"
-- add inline css style to the html document; Use mild formatting like Helvetica font, margins, etc. Try to keep the style simple, visually centered and easy to read.
-- set <title> to a summary of the content.
-- add a more content link to the bottom of the page, like: href="{{URL_PATH}}/more"
-- Remove duplicate paths/slashes in href links; Example: href="/about/tech" is good, href="//about/about///tech/" is bad.
-If {{URL_PATH}} is /, then the response document is a website called "The Everything Website", which contains various links to any kind of topics.
+# Uses jinja2 template to have different prompt for root path/homepage.
+BASE_PROMPT = """{% if URL_PATH == "/" or URL_PATH == "" %}
+Create a detailed response document with content that matches the following URL path: 
+`{{URL_PATH}}`. First line: Content-Type. Then, response data. For HTML:
+- Add related href links and "Back" buttons (href="../").
+- Use simple inline CSS (Helvetica, margins).
+- Set <title> as content summary.
+- Include "More" link: href="/{{URL_PATH}}/more".
+- Avoid duplicate paths/slashes in href.
+If `{{URL_PATH}}` is / or blank, create "The Everything Website" with links to topics like:
+- Science, Technology, History
+- Arts, Philosophy, Health
+- Travel, Sports, Entertainment
+- Politics, Environment, Education
+Include a message explaining the website, URL exploration,
+ and source code link (https://github.com/bay40k/everything_website). 
+ Mention users can input any URL for a new generated page.
 {{OPTIONAL_DATA}}
 
 Content-Type:
+{% else %}
+Create a detailed response document with content that matches the following URL path: 
+`{{URL_PATH}}`. First line: Content-Type. Then, response data. For HTML:
+- Add related href links and "Back" buttons (href="../").
+- Use simple inline CSS (Helvetica, margins).
+- Set <title> as content summary.
+- Include "More" link: href="/{{URL_PATH}}/more".
+- Avoid duplicate paths/slashes in href.
+- Text content should be around at least a few paragraphs, or more.
+{{OPTIONAL_DATA}}
+
+Content-Type:
+{% endif %}
 """
 
 MAX_RETRIES = 12
@@ -49,26 +65,20 @@ def serve_index(path=""):
     return send_from_directory(".", "index.html")
 
 
-# @app.route("/api", methods=["GET"])
-@app.route("/api/", methods=["GET"])  # Add this line
+@app.route("/api/", methods=["GET"])
 @app.route("/api/<path:path>", methods=["GET"])
 def catch_all(path=""):
-
+    template = Template(BASE_PROMPT)
     if request.form:
-        prompt = BASE_PROMPT.replace(
-            "{{OPTIONAL_DATA}}", f"form data: {json.dumps(request.form)}"
+        prompt = template.render(
+            URL_PATH=path, OPTIONAL_DATA=f"form data: {json.dumps(request.form)}"
         )
     else:
-        prompt = BASE_PROMPT.replace("{{OPTIONAL_DATA}}", f"")
-
-    prompt = prompt.replace("{{URL_PATH}}", path)
+        prompt = template.render(URL_PATH=path, OPTIONAL_DATA="")
 
     response = completion_with_backoff(
-        # response = openai.ChatCompletion.create(
         model="text-davinci-003",
         prompt=prompt,
-        # model="gpt-4",
-        # messages=[{"role": "system", "content": prompt}],
         temperature=0.7,
         max_tokens=512,
         top_p=1,
@@ -76,7 +86,6 @@ def catch_all(path=""):
         presence_penalty=0,
     )
     ai_data = response.choices[0].text
-    # ai_data = response["choices"][0]["message"]["content"].strip()
 
     print(ai_data)
 
